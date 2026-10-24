@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "calculatorforgrading": {
+      "type": "streamable-http",
+      "url": "https://calculatorforgrading.com/mcp?src=mcp"
+    }
+  }
+}

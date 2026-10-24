@@ -1,0 +1,909 @@
+{
+  "cloudEndpoint": "https://calculatorforgrading.com/mcp?src=mcp",
+  "description": "Grade math for students and teachers: grades from questions wrong, the score needed on a final, weighted grades, GPA, SAT, ACT and MCAT practice scores and grading scales with sources.",
+  "homepage": "https://calculatorforgrading.com",
+  "identifier": "calculatorforgrading",
+  "name": "Calculator for Grading",
+  "prompts": [],
+  "resources": [],
+  "tools": [
+    {
+      "name": "grade_calculator",
+      "title": "Grade from questions wrong",
+      "description": "Use this when a student or teacher wants the percent and letter grade for a test from the number of questions wrong (or correct), e.g. \"7 wrong out of 40\". Returns the percent, the letter on the chosen scale, how many more correct answers reach the next letter, and optionally a chart of every possible number wrong. Do not use it for a final-exam target, weighted categories, GPA or test scores. Needs only numbers; never ask for names.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "total_questions": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000,
+            "description": "Number of questions or points on the test."
+          },
+          "wrong": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Questions wrong. Give wrong or correct, not both."
+          },
+          "correct": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Questions correct. Give wrong or correct, not both."
+          },
+          "scale": {
+            "type": "string",
+            "enum": [
+              "10_point",
+              "7_point",
+              "plus_minus",
+              "pass_fail"
+            ],
+            "description": "10_point = A 90, B 80, C 70, D 60 (default); 7_point = A 93, B 85, C 77, D 70; plus_minus = the site's preset with A+ 97 ... D- 60; pass_fail = pass at 60."
+          },
+          "custom_cutoffs": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Optional own cut-off percents, highest grade first, strictly descending (10_point: A, B, C, D = 4 numbers; plus_minus: 12 numbers). Use only when the user gives them."
+          },
+          "decimals": {
+            "type": "integer",
+            "enum": [
+              0,
+              1,
+              2
+            ],
+            "description": "Decimals shown in the percent (default 0)."
+          },
+          "rounding": {
+            "type": "string",
+            "enum": [
+              "nearest",
+              "down"
+            ],
+            "description": "nearest rounds half up (default); down never rounds up, for teachers who truncate."
+          },
+          "include_chart": {
+            "type": "boolean",
+            "description": "Also return a chart row for each possible number wrong (first 60 rows)."
+          }
+        },
+        "required": [
+          "total_questions"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total_questions": {
+            "type": "integer"
+          },
+          "wrong": {
+            "type": "integer"
+          },
+          "correct": {
+            "type": "integer"
+          },
+          "percent_exact": {
+            "type": "number"
+          },
+          "percent_shown": {
+            "type": "number"
+          },
+          "letter": {
+            "type": "string"
+          },
+          "scale": {
+            "type": "string"
+          },
+          "rule": {
+            "type": "string"
+          },
+          "next_letter": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "letter": {
+                    "type": "string"
+                  },
+                  "min_percent": {
+                    "type": "number"
+                  },
+                  "more_correct_needed": {
+                    "type": "integer"
+                  },
+                  "percent_then": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "letter",
+                  "min_percent",
+                  "more_correct_needed",
+                  "percent_then"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "chart": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "wrong": {
+                  "type": "number"
+                },
+                "correct": {
+                  "type": "number"
+                },
+                "percent": {
+                  "type": "string"
+                },
+                "letter": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "wrong",
+                "correct",
+                "percent",
+                "letter"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "link": {
+            "type": "string",
+            "description": "Page of calculatorforgrading.com with the same inputs filled in."
+          }
+        },
+        "required": [
+          "total_questions",
+          "wrong",
+          "correct",
+          "percent_exact",
+          "percent_shown",
+          "letter",
+          "scale",
+          "rule",
+          "next_letter",
+          "link"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Grade from questions wrong",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "final_grade_needed",
+      "title": "Score needed on the final",
+      "description": "Use this when a student asks what score they need on a final exam (or last assignment) to reach a target grade, given the current grade and how much the final counts. Returns the needed percent, whether it is secured or out of reach, what a 0 and a 100 would leave, and the need for every letter. Works with percents (current_grade_percent + final_weight_percent) or with points (points_earned_so_far, points_possible_so_far, final_exam_points). Do not use it for a weighted average of categories.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "current_grade_percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 150,
+            "description": "Current course grade in percent before the final."
+          },
+          "final_weight_percent": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 100,
+            "description": "How much of the course grade the final counts, in percent."
+          },
+          "target_grade": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "description": "Wanted grade: a percent (90) or a letter (B+)."
+          },
+          "points_earned_so_far": {
+            "type": "number",
+            "description": "Points mode: points earned so far."
+          },
+          "points_possible_so_far": {
+            "type": "number",
+            "description": "Points mode: points possible so far."
+          },
+          "final_exam_points": {
+            "type": "number",
+            "description": "Points mode: points the final is worth."
+          },
+          "scale": {
+            "type": "string",
+            "enum": [
+              "10_point",
+              "plus_minus"
+            ],
+            "description": "10_point (default) or plus_minus, used to read a letter target."
+          }
+        },
+        "required": [
+          "target_grade"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "scale": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "target_percent": {
+            "type": "number"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "secured",
+              "reach",
+              "impossible"
+            ]
+          },
+          "needed_on_final_percent": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "final_counts_percent": {
+            "type": "number"
+          },
+          "zero_on_final_gives_percent": {
+            "type": "number"
+          },
+          "zero_on_final_letter": {
+            "type": "string"
+          },
+          "hundred_on_final_gives_percent": {
+            "type": "number"
+          },
+          "hundred_on_final_letter": {
+            "type": "string"
+          },
+          "letters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "letter": {
+                  "type": "string"
+                },
+                "needs_percent": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "verdict": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "letter",
+                "needs_percent",
+                "verdict"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "link": {
+            "type": "string",
+            "description": "Page of calculatorforgrading.com with the same inputs filled in."
+          }
+        },
+        "required": [
+          "scale",
+          "target",
+          "target_percent",
+          "verdict",
+          "needed_on_final_percent",
+          "final_counts_percent",
+          "zero_on_final_gives_percent",
+          "zero_on_final_letter",
+          "hundred_on_final_gives_percent",
+          "hundred_on_final_letter",
+          "letters",
+          "link"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Score needed on the final",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "weighted_grade",
+      "title": "Weighted average of categories",
+      "description": "Use this when a student wants the weighted course grade from categories such as homework 20%, tests 50%, final 30%. Each row has a score (percent, a fraction like 45/50, or a letter) and a weight; rows without a score count as still open. Returns the weighted average, the letter, how much weight is graded and open, and optionally what the open part must average to reach a target grade. Do not use it for a single final-exam question without categories.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "Optional category label such as Homework. Never a person's name."
+                },
+                "score": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "description": "Percent (92), fraction (45/50) or letter (B+). Leave out for a category not graded yet."
+                },
+                "weight": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000,
+                  "description": "Weight of the category (usually percent of the course)."
+                }
+              },
+              "required": [
+                "weight"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "target_grade": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "description": "Optional wanted course grade (percent or letter)."
+          },
+          "scale": {
+            "type": "string",
+            "enum": [
+              "10_point",
+              "plus_minus"
+            ],
+            "description": "10_point (default) or plus_minus."
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "scale": {
+            "type": "string"
+          },
+          "weighted_average_percent": {
+            "type": "number"
+          },
+          "letter": {
+            "type": "string"
+          },
+          "graded_weight_percent": {
+            "type": "number"
+          },
+          "open_weight_percent": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string",
+            "enum": [
+              "none",
+              "over",
+              "under",
+              "plain"
+            ]
+          },
+          "target_percent": {
+            "type": "number"
+          },
+          "needed_on_remaining_percent": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "secured",
+              "reach",
+              "impossible"
+            ]
+          },
+          "link": {
+            "type": "string",
+            "description": "Page of calculatorforgrading.com with the same inputs filled in."
+          }
+        },
+        "required": [
+          "scale",
+          "weighted_average_percent",
+          "letter",
+          "graded_weight_percent",
+          "open_weight_percent",
+          "note",
+          "link"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Weighted average of categories",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "gpa_calculator",
+      "title": "GPA from course grades",
+      "description": "Use this when a student wants their GPA from letter grades and credits, high school (honors +0.5, AP/IB +1.0 on passing grades, weighted and unweighted) or college (credit hours, unweighted). Returns unweighted and weighted GPA with the points of each course. Credits default to 1 (hs) or 3 (college). Do not use it for a single test grade or for a school-specific formula such as UC or LSAC.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "courses": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 40,
+            "items": {
+              "type": "object",
+              "properties": {
+                "letter": {
+                  "type": "string",
+                  "enum": [
+                    "A+",
+                    "A",
+                    "A-",
+                    "B+",
+                    "B",
+                    "B-",
+                    "C+",
+                    "C",
+                    "C-",
+                    "D+",
+                    "D",
+                    "D-",
+                    "F"
+                  ],
+                  "description": "Letter grade."
+                },
+                "credits": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 30,
+                  "description": "Credits or credit hours."
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "regular",
+                    "honors",
+                    "ap"
+                  ],
+                  "description": "regular (default), honors or ap (AP/IB)."
+                }
+              },
+              "required": [
+                "letter"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "hs",
+              "college"
+            ],
+            "description": "hs = high school with weighting (default); college = unweighted."
+          },
+          "scale": {
+            "type": "string",
+            "enum": [
+              "4.0",
+              "4.3"
+            ],
+            "description": "4.0 (A+ counts 4.0, default) or 4.3 (A+ counts 4.3)."
+          }
+        },
+        "required": [
+          "courses"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "scale": {
+            "type": "string"
+          },
+          "credits": {
+            "type": "number"
+          },
+          "gpa_unweighted": {
+            "type": "number"
+          },
+          "gpa_weighted": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "letter": {
+                  "type": "string"
+                },
+                "credits": {
+                  "type": "number"
+                },
+                "level": {
+                  "type": "string"
+                },
+                "points_unweighted": {
+                  "type": "number"
+                },
+                "points_weighted": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "letter",
+                "credits",
+                "level",
+                "points_unweighted",
+                "points_weighted"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "link": {
+            "type": "string",
+            "description": "Page of calculatorforgrading.com with the same inputs filled in."
+          }
+        },
+        "required": [
+          "mode",
+          "scale",
+          "credits",
+          "gpa_unweighted",
+          "gpa_weighted",
+          "courses",
+          "link"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "GPA from course grades",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "test_score_calculator",
+      "title": "SAT, ACT and MCAT practice scores",
+      "description": "Use this when a student wants a score from a published practice test: SAT (College Board digital practice tests 4-11, correct answers per section to score ranges), ACT (practice tests 1-4 and the National test, correct answers per section to scale scores and Composite) or MCAT (four section scores 118-132 to total and AAMC percentile). Returns the score with the source table and fetch date. Not for official score reports, other tests, or predicting a real exam.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "test": {
+            "type": "string",
+            "enum": [
+              "sat",
+              "act",
+              "mcat"
+            ]
+          },
+          "practice_test": {
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "SAT: practice test number 4-11. ACT: 1, 2, 3, 4 or national."
+          },
+          "sat_reading_writing_correct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 66,
+            "description": "SAT: correct answers in Reading and Writing (both modules)."
+          },
+          "sat_math_correct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 54,
+            "description": "SAT: correct answers in Math (both modules)."
+          },
+          "act_english_correct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 40
+          },
+          "act_math_correct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 41
+          },
+          "act_reading_correct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 27
+          },
+          "act_science_correct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 34
+          },
+          "mcat_chem_phys": {
+            "type": "integer",
+            "minimum": 118,
+            "maximum": 132
+          },
+          "mcat_cars": {
+            "type": "integer",
+            "minimum": 118,
+            "maximum": 132
+          },
+          "mcat_bio_biochem": {
+            "type": "integer",
+            "minimum": 118,
+            "maximum": 132
+          },
+          "mcat_psych_soc": {
+            "type": "integer",
+            "minimum": 118,
+            "maximum": 132
+          }
+        },
+        "required": [
+          "test"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "test": {
+            "type": "string"
+          },
+          "practice_test": {
+            "type": "string"
+          },
+          "sections": {
+            "type": "object",
+            "description": "Per-section result; keys depend on the test."
+          },
+          "total_low": {
+            "type": "integer"
+          },
+          "total_high": {
+            "type": "integer"
+          },
+          "composite": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_percentile": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "percentile_valid": {
+            "type": "string"
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "fetched": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "url",
+              "fetched"
+            ],
+            "additionalProperties": false
+          },
+          "caveat": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "description": "Page of calculatorforgrading.com with the same inputs filled in."
+          }
+        },
+        "required": [
+          "test",
+          "sections",
+          "source",
+          "caveat",
+          "link"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "SAT, ACT and MCAT practice scores",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "grading_scale_facts",
+      "title": "Grading scale cut-offs with sources",
+      "description": "Use this when someone asks what a grading scale is: the 10-point scale (A 90-100), the 7-point scale (A 93-100), the plus-minus scale with GPA points on 4.0 and 4.3, or the College Board percent-to-GPA table. Returns the cut-offs, the named sources and the date they were checked. Use it instead of answering from memory; there is no national scale and schools differ.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "scale": {
+            "type": "string",
+            "enum": [
+              "10_point",
+              "7_point",
+              "plus_minus",
+              "college_board"
+            ]
+          }
+        },
+        "required": [
+          "scale"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "scale": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "letter": {
+                  "type": "string"
+                },
+                "percent": {
+                  "type": "string"
+                },
+                "gpa_4_0": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "gpa_4_3": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "letter",
+                "percent"
+              ]
+            }
+          },
+          "note": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "checked": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "description": "Page of calculatorforgrading.com with the same inputs filled in."
+          }
+        },
+        "required": [
+          "scale",
+          "title",
+          "rows",
+          "note",
+          "sources",
+          "checked",
+          "link"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Grading scale cut-offs with sources",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ],
+  "version": "1.1.0",
+  "tags": [
+    "education",
+    "grades",
+    "gpa",
+    "calculator",
+    "remote"
+  ]
+}

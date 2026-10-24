@@ -1,0 +1,8 @@
+{
+  "name": "calculatorforgrading-mcp",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Grade math for students and teachers: grades from questions wrong, the score needed on a final, weighted grades, GPA, SAT, ACT and MCAT practice scores and grading scales with sources.",
+  "homepage": "https://calculatorforgrading.com/ai-assistants/",
+  "license": "UNLICENSED"
+}
